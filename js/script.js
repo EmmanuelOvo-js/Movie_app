@@ -138,7 +138,6 @@ displayBackgroundImage = (type, backgroundPath) => {
 	overlayDiv.style.left = '0';
 	overlayDiv.style.zIndex = '-1';
 	overlayDiv.style.opacity = '0.1';
-	overlayDiv.style.marginTop = '6rem';
 
 	if (type === 'movie') {
 		document.querySelector('#movie-details').appendChild(overlayDiv);
