@@ -1,5 +1,15 @@
 const global = {
 	currentPath: window.location.pathname,
+	search: {
+		term: '',
+		type: '',
+		page: 1,
+		totalpages: 1,
+	},
+	api: {
+		apiKey: '5d712d45d9561864ea774a0ff665ebc3',
+		apiUrl: 'https://api.themoviedb.org/3/',
+	},
 };
 
 //Movies page
@@ -13,7 +23,7 @@ displayPopularMovies = async () => {
                     ${
 											//ternary operator
 											movie.poster_path
-												? `<img src="https://image.tmdb.org/t/p/w500${movie.poster_path}"
+												? `<img src="https://image.tmdb.org/t/p/w500/${movie.poster_path}"
                     class="card-img-top" alt="${movie.title}" />`
 												: `<img src="images/no-image.jpg" class="card-img-top" alt="${movie.title}"/>`
 										}
@@ -42,7 +52,7 @@ displayTvShows = async () => {
 		            ${
 									//ternary operator
 									tv.poster_path
-										? `<img src="https://image.tmdb.org/t/p/w500${tv.poster_path}" class="card-img-top" alt="${tv.title}" />`
+										? `<img src="https://image.tmdb.org/t/p/w500/${tv.poster_path}" class="card-img-top" alt="${tv.title}" />`
 										: `<img src="images/no-image.jpg" class="card-img-top" alt="${tv.title}" />`
 								}
 		            </a>
@@ -74,7 +84,7 @@ dislayMovieDetails = async () => {
 		  ${
 				//ternary operator
 				movie.poster_path
-					? `<img src="https://image.tmdb.org/t/p/w500${movie.poster_path}"
+					? `<img src="https://image.tmdb.org/t/p/w500/${movie.poster_path}"
                     class="card-img-top" alt="${movie.title}" />`
 					: `<img src="images/no-image.jpg" class="card-img-top" alt="${movie.title}"/>`
 			}
@@ -141,7 +151,7 @@ dislayTVDetails = async () => {
 		  ${
 				//ternary operator
 				tv.poster_path
-					? `<img src="https://image.tmdb.org/t/p/w500${tv.poster_path}"
+					? `<img src="https://image.tmdb.org/t/p/w500/${tv.poster_path}"
                     class="card-img-top" alt="${tv.title}" />`
 					: `<img src="images/no-image.jpg" class="card-img-top" alt="${tv.title}"/>`
 			}
@@ -158,7 +168,7 @@ dislayTVDetails = async () => {
             </p>
             <h5>Genres</h5>
             <ul class="list-group">
-              ${tv.genres.map((genre) => `<li>${genre.name}</li>`).join('')}
+              ${tv.genres.map((genre) => `<li>- ${genre.name}</li>`).join('')}
             </ul>
             <a href="${
 							tv.homepage
@@ -188,6 +198,73 @@ dislayTVDetails = async () => {
 	document.querySelector('#show-details').appendChild(div);
 };
 
+//Search Movies or Tv Shows
+search = async () => {
+	const queryString = location.search;
+	const urlParams = new URLSearchParams(queryString);
+
+	global.search.type = urlParams.get('type');
+	global.search.term = urlParams.get('search-term');
+
+	if (global.search.term !== '' && global.search.term !== null) {
+		const { results, total_pages, page } = await searchAPIData();
+		if (results.length === 0) {
+			showAlert('No results found');
+			return;
+		}
+
+		displaySearchResults(results);
+
+		//clear input
+		document.querySelector('#search-term').value = '';
+	} else {
+		showAlert('Please Enter a Search Term');
+	}
+};
+
+displaySearchResults = (results) => {
+	results.forEach((result) => {
+		const div = document.createElement('div');
+		div.classList.add('card');
+		div.innerHTML = `
+					<a href="${global.search.type}-details.html?id=${result.id}">
+                    ${
+											//ternary operator
+											result.poster_path
+												? `<img src="https://image.tmdb.org/t/p/w500/${
+														result.poster_path
+												  }"
+			class="card-img-top" alt="${
+				global.search.type === 'movie' ? result.title : result.name
+			}" />`
+												: `<img src="images/no-image.jpg" class="card-img-top" alt="${
+														global.search.type === 'movie'
+															? result.title
+															: result.name
+												  }"/>`
+										}
+                    
+                    </a>
+
+					<div class="card-body">
+						<h5 class="card-title">${
+							global.search.type === 'movie' ? result.title : result.name
+						}</h5>
+						<p class="card-text">
+							<small class="text-muted">Release: ${
+								global.search.type === 'movie'
+									? result.release_date
+									: result.first_air_date
+							}</small>
+						</p>
+					</div>
+                `;
+		document.querySelector('#search-results').appendChild(div);
+	});
+};
+
+// .......................................................................................................
+
 //Display Background Image
 displayBackgroundImage = (type, backgroundPath) => {
 	const overlayDiv = document.createElement('div');
@@ -212,14 +289,36 @@ displayBackgroundImage = (type, backgroundPath) => {
 
 //Fetch data from TMDB API
 fetchAPIData = async (endpoint) => {
-	const API_KEY = '5d712d45d9561864ea774a0ff665ebc3';
-	const API_URL = 'https://api.themoviedb.org/3/';
+	/* Only do this for development or small projects. You should store your key
+	and make request from server */
+	const API_KEY = global.api.apiKey;
+	const API_URL = global.api.apiUrl;
 
 	//adds spinner loading effect
 	showSpinner();
 
 	const res = await fetch(
 		`${API_URL}${endpoint}?api_key=${API_KEY}&language=en-US`
+	);
+
+	const data = await res.json();
+	//remove spinner loading effect
+	removeSpinner();
+
+	return data;
+};
+
+//Make Request to Search
+searchAPIData = async () => {
+	const API_KEY = global.api.apiKey;
+	const API_URL = global.api.apiUrl;
+
+	//adds spinner loading effect
+	showSpinner();
+
+	const res = await fetch(
+		`${API_URL}search/${global.search.type}?api_key=${API_KEY}&
+		language=en-US&query=${global.search.term}`
 	);
 
 	const data = await res.json();
@@ -301,6 +400,18 @@ TvDisplaySlider = async () => {
 	});
 };
 
+//Show Alert
+showAlert = (message, className = 'error') => {
+	const alertElement = document.createElement('div');
+	alertElement.classList.add('alert', className);
+	alertElement.appendChild(document.createTextNode(message));
+	//add into alert div
+	document.querySelector('#alert').appendChild(alertElement);
+
+	//Time out for alert div
+	setTimeout(() => alertElement.remove(), 3000);
+};
+
 initSwiper = () => {
 	const swiper = new Swiper('.swiper', {
 		slidesPerView: 1,
@@ -337,7 +448,7 @@ init = () => {
 			displayTvShows();
 			break;
 		case '/search.html':
-			console.log('search');
+			search();
 			break;
 		case '/movie-details.html':
 			dislayMovieDetails();
