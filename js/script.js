@@ -5,6 +5,7 @@ const global = {
 		type: '',
 		page: 1,
 		totalpages: 1,
+		totalResults: 0,
 	},
 	api: {
 		apiKey: '5d712d45d9561864ea774a0ff665ebc3',
@@ -207,7 +208,12 @@ search = async () => {
 	global.search.term = urlParams.get('search-term');
 
 	if (global.search.term !== '' && global.search.term !== null) {
-		const { results, total_pages, page } = await searchAPIData();
+		const { results, total_pages, page, total_results } = await searchAPIData();
+
+		global.search.page = page;
+		global.search.totalpages = total_pages;
+		global.search.totalResults = total_results;
+
 		if (results.length === 0) {
 			showAlert('No results found');
 			return;
@@ -223,6 +229,12 @@ search = async () => {
 };
 
 displaySearchResults = (results) => {
+	//Clear Previous results
+	//Added this because pagination function creates a new result for every Click
+	document.querySelector('#search-results').innerHTML = '';
+	document.querySelector('#search-results-heading').innerHTML = '';
+	document.querySelector('#pagination').innerHTML = '';
+
 	results.forEach((result) => {
 		const div = document.createElement('div');
 		div.classList.add('card');
@@ -259,7 +271,51 @@ displaySearchResults = (results) => {
 						</p>
 					</div>
                 `;
+		document.querySelector('#search-results-heading').innerHTML = `
+		<h2>${results.length} of ${global.search.totalResults} 
+		Result for <span style="color: red">${global.search.term}</span></h2>`;
+
 		document.querySelector('#search-results').appendChild(div);
+	});
+
+	displayPagination();
+};
+
+// Create and Display Pagination for search page
+displayPagination = () => {
+	const div = document.createElement('div');
+	div.classList.add('pagination');
+	div.innerHTML = `
+	<button class="btn btn-primary" id="prev">Prev</button>
+	<button class="btn btn-primary" id="next">Next</button>
+
+	<div class="page-counter">${global.search.page} of ${global.search.totalpages}</div>`;
+
+	document.querySelector('#pagination').appendChild(div);
+
+	//Disable prev btn if on first page
+	if (global.search.page === 1) {
+		document.querySelector('#prev').disabled = true;
+	}
+
+	if (global.search.page === global.search.totalpages) {
+		document.querySelector('#next').disabled = true;
+	}
+
+	//Next page Click pagination
+	document.querySelector('#next').addEventListener('click', async () => {
+		//Increment
+		global.search.page++;
+		const { results, total_pages } = await searchAPIData();
+		displaySearchResults(results);
+	});
+
+	//Prev page Click pagination
+	document.querySelector('#prev').addEventListener('click', async () => {
+		//Decrement
+		global.search.page--;
+		const { results, total_pages } = await searchAPIData();
+		displaySearchResults(results);
 	});
 };
 
@@ -318,7 +374,7 @@ searchAPIData = async () => {
 
 	const res = await fetch(
 		`${API_URL}search/${global.search.type}?api_key=${API_KEY}&
-		language=en-US&query=${global.search.term}`
+		language=en-US&query=${global.search.term}&page=${global.search.page}`
 	);
 
 	const data = await res.json();
